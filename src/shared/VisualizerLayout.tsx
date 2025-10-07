@@ -57,9 +57,18 @@ const VisualizerLayout: React.FC<VisualizerLayoutProps> = ({
 
   const handleRemove = () => {
     if (displayedItems.length === 0) return;
-    const candidate = mode === "stack" ? displayedItems[displayedItems.length - 1] : displayedItems[0];
+    const candidate =
+      mode === "stack"
+        ? displayedItems[displayedItems.length - 1]
+        : displayedItems[0];
     setRemovingId(candidate.id);
     if (selectedBlock?.id === candidate.id) setSelectedBlock(null);
+  };
+
+  const handleDeleteTail = () => {
+    if (displayedItems.length === 0) return;
+    const tail = displayedItems[displayedItems.length - 1];
+    setRemovingId(tail.id);
   };
 
   const handleDeleteSelectedValue = () => {
@@ -114,20 +123,10 @@ const VisualizerLayout: React.FC<VisualizerLayoutProps> = ({
   };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "row",
-        width: "100vw",
-        height: "100vh",
-        background: "#0e0e13",
-        color: "white",
-        overflow: "hidden",
-      }}
-    >
-      {/* Canvas + controls */}
-      <div style={{ flex: 0.8, display: "flex", flexDirection: "column", padding: 20, position: "relative" }}>
-        {/* Back button */}
+    <div style={{ display: "flex", width: "100vw", height: "100vh", background: "#0e0e13", color: "white" }}>
+      {/* LEFT - CANVAS */}
+      <div style={{ flex: 0.8, position: "relative", padding: 20 }}>
+        {/* BACK BUTTON */}
         <button
           onClick={() => navigate("/")}
           style={{
@@ -146,8 +145,8 @@ const VisualizerLayout: React.FC<VisualizerLayoutProps> = ({
           ← Back
         </button>
 
-        {/* Controls */}
-        <div style={{ marginBottom: 12, marginTop: 40 }}>
+        {/* CONTROLS */}
+        <div style={{ marginTop: 40, marginBottom: 10 }}>
           <input
             value={input}
             onChange={e => setInput(e.target.value)}
@@ -161,59 +160,67 @@ const VisualizerLayout: React.FC<VisualizerLayoutProps> = ({
               color: "white",
             }}
           />
-          <button onClick={handleAdd} style={{ marginRight: 8 }}>{addLabel}</button>
-          <button onClick={handleRemove}>{removeLabel}</button>
+          <button onClick={handleAdd} style={{ marginRight: 8 }}>
+            {addLabel}
+          </button>
+          <button onClick={handleRemove} style={{ marginRight: 8 }}>
+            {removeLabel}
+          </button>
 
-          {/* Εμφανίζεται μόνο για linked list */}
+          {/* Μόνο για linked list */}
           {mode === "linkedlist" && (
             <>
-              <input
-                value={deleteInput}
-                onChange={e => setDeleteInput(e.target.value)}
-                placeholder="Value to delete"
-                style={{
-                  marginLeft: 12,
-                  marginRight: 8,
-                  padding: 6,
-                  borderRadius: 4,
-                  border: "1px solid #555",
-                  background: "#1c1c28",
-                  color: "white",
-                }}
-              />
+              <button onClick={handleDeleteTail} style={{ marginRight: 8 }}>
+                Delete Tail
+              </button>
               <button onClick={handleDeleteSelectedValue}>Delete Selected</button>
+              <div style={{ marginTop: 6 }}>
+                <input
+                  value={deleteInput}
+                  onChange={e => setDeleteInput(e.target.value)}
+                  placeholder="Value to delete"
+                  style={{
+                    marginTop: 6,
+                    padding: 6,
+                    borderRadius: 4,
+                    border: "1px solid #555",
+                    background: "#1c1c28",
+                    color: "white",
+                  }}
+                />
+              </div>
             </>
           )}
         </div>
 
-        {/* 3D Canvas */}
-        <div style={{ width: "100%", height: "100%" }}>
-          <Canvas style={{ width: "100%", height: "100%" }}>
-            <ambientLight intensity={0.5} />
-            <pointLight position={[10, 10, 10]} />
-            <VisualizerComponent
-              items={displayedItems}
-              removingId={removingId ?? undefined}
-              traversingId={traversingId ?? undefined}
-              lastAddedId={lastAddedId ?? undefined}
-              selectedId={selectedBlock?.id ?? undefined}
-              onBlockRemoved={onBlockRemoved}
-              onBlockClicked={onBlockClicked}
-            />
-            <OrbitControls enablePan enableZoom minDistance={2} maxDistance={30} />
-            <Environment preset="sunset" />
-          </Canvas>
-        </div>
+        {/* CANVAS */}
+        <Canvas style={{ width: "100%", height: "100%" }}>
+          <ambientLight intensity={0.5} />
+          <pointLight position={[10, 10, 10]} />
+          <VisualizerComponent
+            items={displayedItems}
+            removingId={removingId ?? undefined}
+            traversingId={traversingId ?? undefined}
+            lastAddedId={lastAddedId ?? undefined}
+            selectedId={selectedBlock?.id ?? undefined}
+            onBlockRemoved={onBlockRemoved}
+            onBlockClicked={onBlockClicked}
+          />
+          <OrbitControls enablePan enableZoom minDistance={2} maxDistance={30} />
+          <Environment preset="sunset" />
+        </Canvas>
       </div>
 
-      {/* Info Panel */}
-      <div style={{
-        flex: 0.2,
-        padding: 20,
-        background: "#1a1a25",
-        borderLeft: "2px solid #222",
-        overflowY: "auto"
-      }}>
+      {/* RIGHT PANEL */}
+      <div
+        style={{
+          flex: 0.2,
+          padding: 20,
+          background: "#1a1a25",
+          borderLeft: "2px solid #222",
+          overflowY: "auto",
+        }}
+      >
         <h2>{title}</h2>
         <p>{description}</p>
 
@@ -227,9 +234,15 @@ const VisualizerLayout: React.FC<VisualizerLayoutProps> = ({
         )}
 
         <h4 style={{ marginTop: 14 }}>Elements</h4>
-        {displayedItems.length === 0 ? <p>Empty</p> : (
+        {displayedItems.length === 0 ? (
+          <p>Empty</p>
+        ) : (
           <ul>
-            {displayedItems.map((b, idx) => <li key={b.id}>{idx}: {String(b.value)}</li>)}
+            {displayedItems.map((b, idx) => (
+              <li key={b.id}>
+                {idx}: {String(b.value)}
+              </li>
+            ))}
           </ul>
         )}
       </div>

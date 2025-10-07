@@ -1,13 +1,8 @@
 import React from "react";
 import Block3D from "./Block3D";
 
-interface Item {
-  id: string;
-  value: string | number;
-}
-
 interface LinkedListVisualizerProps {
-  items: Item[];
+  items: { id: string; value: string | number }[];
   removingId?: string;
   traversingId?: string;
   lastAddedId?: string;
@@ -34,75 +29,85 @@ const LinkedListVisualizer3D: React.FC<LinkedListVisualizerProps> = ({
         const isNew = lastAddedId === item.id;
         const isRemoving = removingId === item.id;
         const isTraversing = traversingId === item.id;
-        const x = index * nodeSpacing;
+
+        const blockX = index * nodeSpacing;
 
         return (
           <React.Fragment key={item.id}>
+            {/* Node */}
             <Block3D
-              position={[x, 0, 0]}
+              position={[blockX, 0, 0]}
               value={item.value}
               color={
-                isSelected
-                  ? "goldenrod"
-                  : isRemoving
-                  ? "crimson"
+                isRemoving
+                  ? "red"
                   : isTraversing
-                  ? "gold"
+                  ? "#f59e0b"
+                  : isSelected
+                  ? "goldenrod"
                   : "#3b82f6"
               }
               isNew={isNew}
               isRemoving={isRemoving}
               isSelected={isSelected}
-              scaleOverride={item.value === "NULL" ? 0.5 : undefined}
               onClick={() => onBlockClicked(item.id, index, item.value)}
               onAnimationEnd={() => {
-                // Block3D calls this after its removal animation finishes
-                if (isRemoving) onBlockRemoved(item.id);
+                if (removingId === item.id) onBlockRemoved(item.id);
               }}
             />
 
-            {/* Arrow προς επόμενο node (μόνο όταν υπάρχει επόμενο πραγματικό node) */}
+            {/* Arrow προς επόμενο node */}
             {index < items.length - 1 && (
-              <group key={`arrow-${item.id}`}>
-                {/* compute start and end so arrow doesn't intersect boxes */}
-                {(() => {
-                  const startX = x + 0.5; // right edge of this node
-                  const nextX = (index + 1) * nodeSpacing;
-                  const endX = nextX - 0.5; // left edge of next node
-                  const length = Math.max(0.1, endX - startX);
+              <group key={`arrow-${index}`}>
+                {/* Cylinder κορμός (οριζόντιος, μικρότερος για κενό) */}
+                <mesh
+                  position={[blockX + 0.9, 0, 0]}
+                  rotation={[0, 0, -Math.PI / 2]}
+                >
+                  <cylinderGeometry args={[0.03, 0.03, 0.8, 8]} />
+                  <meshStandardMaterial color="white" />
+                </mesh>
 
-                  return (
-                    <>
-                      {/* cylinder aligned along X: rotate -PI/2 around Z (cyl default Y) */}
-                      <mesh
-                        position={[startX + length / 2, 0, 0]}
-                        rotation={[0, 0, -Math.PI / 2]}
-                      >
-                        <cylinderGeometry args={[0.03, 0.03, length, 8]} />
-                        <meshStandardMaterial color="white" />
-                      </mesh>
-
-                      {/* cone at the end */}
-                      <mesh position={[endX + 0.125, 0, 0]} rotation={[0, 0, -Math.PI / 2]}>
-                        <coneGeometry args={[0.08, 0.25, 8]} />
-                        <meshStandardMaterial color="white" />
-                      </mesh>
-                    </>
-                  );
-                })()}
+                {/* Cone μύτη */}
+                <mesh
+                  position={[blockX + 1.25, 0, 0]}
+                  rotation={[0, 0, -Math.PI / 2]}
+                >
+                  <coneGeometry args={[0.08, 0.25, 8]} />
+                  <meshStandardMaterial color="white" />
+                </mesh>
               </group>
             )}
           </React.Fragment>
         );
       })}
 
+      {/* Arrow από τελευταίο node προς NULL */}
+      {items.length > 0 && (
+        <group key={`arrow-null`}>
+          <mesh
+            position={[items.length * nodeSpacing - 0.3, 0, 0]}
+            rotation={[0, 0, -Math.PI / 2]}
+          >
+            <cylinderGeometry args={[0.03, 0.03, 0.8, 8]} />
+            <meshStandardMaterial color="white" />
+          </mesh>
+          <mesh
+            position={[items.length * nodeSpacing + 0.1, 0, 0]}
+            rotation={[0, 0, -Math.PI / 2]}
+          >
+            <coneGeometry args={[0.08, 0.25, 8]} />
+            <meshStandardMaterial color="white" />
+          </mesh>
+        </group>
+      )}
+
       {/* Tail NULL box */}
       <Block3D
-        position={[items.length * 2, 0, 0]}
+        position={[items.length * nodeSpacing + 1.5, 0, 0]}
         value="NULL"
         color="#888888"
         scaleOverride={0.5}
-        onClick={() => {}}
       />
     </>
   );
