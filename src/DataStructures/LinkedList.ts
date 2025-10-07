@@ -29,8 +29,28 @@ export class LinkedList {
     return removed.value;
   }
 
-  toArray() {
-    const arr = [];
+  // Remove first node with given value. Returns true if removed.
+  removeByValue(value: any): boolean {
+    if (!this.head) return false;
+    if (this.head.value === value) {
+      this.head = this.head.next;
+      return true;
+    }
+    let prev = this.head;
+    let curr = this.head.next;
+    while (curr) {
+      if (curr.value === value) {
+        prev.next = curr.next;
+        return true;
+      }
+      prev = curr;
+      curr = curr.next;
+    }
+    return false;
+  }
+
+  toArray(): any[] {
+    const arr: any[] = [];
     let curr = this.head;
     while (curr) {
       arr.push(curr.value);

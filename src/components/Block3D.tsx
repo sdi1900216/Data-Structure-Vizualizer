@@ -27,19 +27,29 @@ const Block3D: React.FC<BlockProps> = ({
 }) => {
   const [active, setActive] = useState(true);
 
+  const targetScale = scaleOverride ?? (isSelected ? 1.2 : 1);
+  // when new: we want small -> targetScale; when removing: move up and shrink
   const { rotY, posY, scale } = useSpring({
-    from: { rotY: isNew ? Math.PI * 2 : 0, posY: position[1] + (isNew ? 1 : 0), scale: scaleOverride ?? (isNew ? 0.001 : 1), },
-    to: async (next) => {
-      if (isRemoving) {
-        await next({ rotY: Math.PI * 2, posY: position[1] + 1, scale: 0.001 });
-        setActive(false);
-        onAnimationEnd?.();
-      } else {
-        // Scale μεγαλύτερο όταν επιλεγμένο (pop out)
-        await next({ rotY: 0, posY: position[1], scale: scaleOverride ?? (isSelected ? 1.2 : 1) });
-      }
+    // initial values
+    from: {
+      rotY: isNew ? Math.PI * 2 : 0,
+      posY: position[1] + (isNew ? 1 : 0),
+      scale: isNew ? 0.001 : (scaleOverride ?? 1),
+    },
+    // to values depend on state
+    to: {
+      rotY: 0,
+      posY: isRemoving ? position[1] + 2 : position[1],
+      scale: isRemoving ? 0.001 : targetScale,
     },
     config: { mass: 1, tension: 170, friction: 20 },
+    onRest: () => {
+      if (isRemoving) {
+        // after removal animation finished
+        setActive(false);
+        onAnimationEnd?.();
+      }
+    },
   });
 
   if (!active) return null;
@@ -62,7 +72,6 @@ const Block3D: React.FC<BlockProps> = ({
         <boxGeometry args={[1, 0.5, 1]} />
         <meshStandardMaterial
           color={color}
-          // Glow όταν επιλεγμένο
           emissive={isSelected ? "orange" : "black"}
           emissiveIntensity={isSelected ? 0.8 : 0}
         />
@@ -72,11 +81,10 @@ const Block3D: React.FC<BlockProps> = ({
         position={[0, 0, 0.51]}
         fontSize={0.22}
         color={isSelected ? "black" : "#fff"}
-        fontWeight={isSelected ? "bold" : "normal"}
         anchorX="center"
         anchorY="middle"
       >
-        {value}
+        {String(value)}
       </Text>
     </a.group>
   );

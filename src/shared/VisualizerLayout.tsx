@@ -2,14 +2,15 @@ import React, { useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Environment } from "@react-three/drei";
 import { v4 as uuidv4 } from "uuid";
-import type { DisplayedBlock } from "../components/StackVisualizer3D";
 import { useNavigate } from "react-router-dom";
+
+export type DisplayedBlock = { id: string; value: any };
 
 interface VisualizerLayoutProps {
   title: string;
   description: string;
-  mode: "stack" | "queue" | "linkedlist"; 
-  dataStructureRef: React.MutableRefObject<any>; // θα κρατήσει instance
+  mode: "stack" | "queue" | "linkedlist";
+  dataStructureRef: React.MutableRefObject<any>;
   VisualizerComponent: React.FC<any>;
   addLabel: string;
   removeLabel: string;
@@ -26,57 +27,90 @@ const VisualizerLayout: React.FC<VisualizerLayoutProps> = ({
 }) => {
   const navigate = useNavigate();
 
-  // displayedItems κρατά id + value για rendering & animation
   const [displayedItems, setDisplayedItems] = useState<DisplayedBlock[]>([]);
-  const [lastAddedId] = useState<string | null>(null);
+  const [lastAddedId, setLastAddedId] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
-  const [selectedBlock, setSelectedBlock] = useState<{ id: string; index: number; value: string | number } | null>(null);
+  const [traversingId, setTraversingId] = useState<string | null>(null);
+  const [selectedBlock, setSelectedBlock] = useState<{ id: string; index: number; value: any } | null>(null);
   const [input, setInput] = useState("");
+  const [deleteInput, setDeleteInput] = useState("");
 
-  // helper: push/enqueue
   const handleAdd = () => {
-    const value = input || Math.floor(Math.random() * 100);
+    const value = input !== "" ? input : Math.floor(Math.random() * 100);
     const id = uuidv4();
-  if (mode === "stack") {
-    dataStructureRef.current.push(value);
-    setDisplayedItems(prev => [...prev, { id, value }]);
-  } else if (mode === "queue") {
-    dataStructureRef.current.enqueue(value);
-    setDisplayedItems(prev => [...prev, { id, value }]);
-  } else if (mode === "linkedlist") {
-    dataStructureRef.current.append(value);
-    setDisplayedItems(prev => [...prev, { id, value }]);
-  }
-  }; 
 
-  // remove: mark removing (first for queue, last for stack)
+    if (mode === "stack") {
+      dataStructureRef.current.push(value);
+      setDisplayedItems(prev => [...prev, { id, value }]);
+    } else if (mode === "queue") {
+      dataStructureRef.current.enqueue(value);
+      setDisplayedItems(prev => [...prev, { id, value }]);
+    } else if (mode === "linkedlist") {
+      dataStructureRef.current.append(value);
+      setDisplayedItems(prev => [...prev, { id, value }]);
+    }
+
+    setInput("");
+    setLastAddedId(id);
+    setTimeout(() => setLastAddedId(null), 800);
+  };
+
   const handleRemove = () => {
     if (displayedItems.length === 0) return;
     const candidate = mode === "stack" ? displayedItems[displayedItems.length - 1] : displayedItems[0];
     setRemovingId(candidate.id);
+    if (selectedBlock?.id === candidate.id) setSelectedBlock(null);
+  };
 
-    if (selectedBlock?.id === candidate.id) {
-      setSelectedBlock(null);
+  const handleDeleteSelectedValue = () => {
+    if (deleteInput === "") return;
+    traverseToDelete(0, deleteInput);
+  };
+
+  const traverseToDelete = (index: number, valueToDelete: any) => {
+    if (index >= displayedItems.length) {
+      setTraversingId(null);
+      return;
     }
+    const node = displayedItems[index];
+    setTraversingId(node.id);
+
+    setTimeout(() => {
+      if (String(node.value) === String(valueToDelete)) {
+        setTraversingId(null);
+        setRemovingId(node.id);
+      } else {
+        traverseToDelete(index + 1, valueToDelete);
+      }
+    }, 500);
   };
 
   const onBlockRemoved = (id: string) => {
+    const item = displayedItems.find(b => b.id === id);
+    if (!item) {
+      setRemovingId(null);
+      return;
+    }
+
     if (mode === "stack") {
-  dataStructureRef.current.pop();
-  setDisplayedItems(prev => prev.filter(b => b.id !== id));
-} else if (mode === "queue") {
-  dataStructureRef.current.dequeue();
-  setDisplayedItems(prev => prev.filter(b => b.id !== id));
-} else if (mode === "linkedlist") {
-    //Αφαιρούμε μόνο το node που τελείωσε το animation
-    setDisplayedItems(prev => prev.filter(item => item.id !== id));
-    dataStructureRef.current.removeHead(); // αφαιρούμε το head μετά το animation
+      dataStructureRef.current.pop?.();
+      setDisplayedItems(prev => prev.filter(b => b.id !== id));
+    } else if (mode === "queue") {
+      dataStructureRef.current.dequeue?.();
+      setDisplayedItems(prev => prev.filter(b => b.id !== id));
+    } else if (mode === "linkedlist") {
+      dataStructureRef.current.removeByValue?.(item.value);
+      setDisplayedItems(prev => prev.filter(b => b.id !== id));
+    }
+
     setRemovingId(null);
-}
+    setTraversingId(null);
+    setSelectedBlock(null);
+    setDeleteInput("");
   };
 
-  const onBlockClicked = (id: string, index: number, value: string | number) => {
-    setSelectedBlock({ id, index, value });
+  const onBlockClicked = (id: string, index: number, value: any) => {
+    setSelectedBlock(prev => (prev?.id === id ? null : { id, index, value }));
   };
 
   return (
@@ -91,19 +125,29 @@ const VisualizerLayout: React.FC<VisualizerLayoutProps> = ({
         overflow: "hidden",
       }}
     >
-      {/* Canvas area (80%) */}
-      <div
-        style={{
-          flex: 0.8,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "flex-start",
-          padding: 20,
-          height: "100%",
-        }}
-      >
-        <div style={{ marginBottom: 12 }}>
+      {/* Canvas + controls */}
+      <div style={{ flex: 0.8, display: "flex", flexDirection: "column", padding: 20, position: "relative" }}>
+        {/* Back button */}
+        <button
+          onClick={() => navigate("/")}
+          style={{
+            position: "absolute",
+            top: 10,
+            left: 10,
+            padding: "6px 12px",
+            borderRadius: 6,
+            background: "#222",
+            color: "white",
+            border: "1px solid #555",
+            cursor: "pointer",
+            zIndex: 10,
+          }}
+        >
+          ← Back
+        </button>
+
+        {/* Controls */}
+        <div style={{ marginBottom: 12, marginTop: 40 }}>
           <input
             value={input}
             onChange={e => setInput(e.target.value)}
@@ -119,9 +163,30 @@ const VisualizerLayout: React.FC<VisualizerLayoutProps> = ({
           />
           <button onClick={handleAdd} style={{ marginRight: 8 }}>{addLabel}</button>
           <button onClick={handleRemove}>{removeLabel}</button>
-          <button onClick={() => navigate("/")} style={{ marginLeft: 16 }}>Back</button>
+
+          {/* Εμφανίζεται μόνο για linked list */}
+          {mode === "linkedlist" && (
+            <>
+              <input
+                value={deleteInput}
+                onChange={e => setDeleteInput(e.target.value)}
+                placeholder="Value to delete"
+                style={{
+                  marginLeft: 12,
+                  marginRight: 8,
+                  padding: 6,
+                  borderRadius: 4,
+                  border: "1px solid #555",
+                  background: "#1c1c28",
+                  color: "white",
+                }}
+              />
+              <button onClick={handleDeleteSelectedValue}>Delete Selected</button>
+            </>
+          )}
         </div>
 
+        {/* 3D Canvas */}
         <div style={{ width: "100%", height: "100%" }}>
           <Canvas style={{ width: "100%", height: "100%" }}>
             <ambientLight intensity={0.5} />
@@ -129,35 +194,30 @@ const VisualizerLayout: React.FC<VisualizerLayoutProps> = ({
             <VisualizerComponent
               items={displayedItems}
               removingId={removingId ?? undefined}
+              traversingId={traversingId ?? undefined}
               lastAddedId={lastAddedId ?? undefined}
               selectedId={selectedBlock?.id ?? undefined}
               onBlockRemoved={onBlockRemoved}
               onBlockClicked={onBlockClicked}
             />
-            <OrbitControls enablePan={true} enableZoom={true} minDistance={2} maxDistance={20} />
+            <OrbitControls enablePan enableZoom minDistance={2} maxDistance={30} />
             <Environment preset="sunset" />
           </Canvas>
         </div>
       </div>
 
-      {/* Info panel (20%) */}
-      <div
-        style={{
-          flex: 0.2,
-          padding: 20,
-          background: "#1a1a25",
-          borderLeft: "2px solid #222",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "flex-start",
-          overflowY: "auto",
-        }}
-      >
+      {/* Info Panel */}
+      <div style={{
+        flex: 0.2,
+        padding: 20,
+        background: "#1a1a25",
+        borderLeft: "2px solid #222",
+        overflowY: "auto"
+      }}>
         <h2>{title}</h2>
         <p>{description}</p>
 
-        {!selectedBlock && <p>Κάνε click σε ένα block για πληροφορίες.</p>}
-
+        {!selectedBlock && <p>Click a block to select it.</p>}
         {selectedBlock && (
           <>
             <h3>Selected</h3>
@@ -169,7 +229,7 @@ const VisualizerLayout: React.FC<VisualizerLayoutProps> = ({
         <h4 style={{ marginTop: 14 }}>Elements</h4>
         {displayedItems.length === 0 ? <p>Empty</p> : (
           <ul>
-            {displayedItems.map((b, idx) => <li key={b.id}>{idx}: {b.value}</li>)}
+            {displayedItems.map((b, idx) => <li key={b.id}>{idx}: {String(b.value)}</li>)}
           </ul>
         )}
       </div>
