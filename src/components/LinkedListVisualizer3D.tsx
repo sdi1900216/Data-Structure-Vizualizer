@@ -86,14 +86,14 @@ const LinkedListVisualizer3D: React.FC<LinkedListVisualizerProps> = ({
       {items.length > 0 && (
         <group key={`arrow-null`}>
           <mesh
-            position={[items.length * nodeSpacing - 0.3, 0, 0]}
+            position={[items.length * nodeSpacing - 1.05, 0, 0]}
             rotation={[0, 0, -Math.PI / 2]}
           >
             <cylinderGeometry args={[0.03, 0.03, 0.8, 8]} />
             <meshStandardMaterial color="white" />
           </mesh>
           <mesh
-            position={[items.length * nodeSpacing + 0.1, 0, 0]}
+            position={[items.length * nodeSpacing - 0.55, 0, 0]}
             rotation={[0, 0, -Math.PI / 2]}
           >
             <coneGeometry args={[0.08, 0.25, 8]} />
@@ -104,7 +104,7 @@ const LinkedListVisualizer3D: React.FC<LinkedListVisualizerProps> = ({
 
       {/* Tail NULL box */}
       <Block3D
-        position={[items.length * nodeSpacing + 1.5, 0, 0]}
+        position={[items.length * nodeSpacing , 0, 0]}
         value="NULL"
         color="#888888"
         scaleOverride={0.5}
